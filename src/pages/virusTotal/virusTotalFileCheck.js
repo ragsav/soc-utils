@@ -1,13 +1,11 @@
 import "./style.css";
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
-import { Select, Button, Alert, Progress } from "antd";
+import { Select, Button, Alert, Progress, Input } from "antd";
 import TextArea from "antd/lib/input/TextArea";
 import { DownloadOutlined, UndoOutlined } from "@ant-design/icons";
 const { Option, OptGroup } = Select;
 
-const apiKey = "d09f11ba37a84a33b7774a304044a0e3f13e704becee7f7ab43f62462cfc59d4";
-const VTHeader = { "x-apikey": apiKey };
 function VirusTotalFileCheck() {
   const [isLoading, setIsLoading] = useState(false);
   const [hashText, setHashText] = useState("");
@@ -17,16 +15,18 @@ function VirusTotalFileCheck() {
   const [error, setError] = useState("");
   const [hashCounter, setHashCounter] = useState(0);
   const [hashConversion, setHashConversion] = useState("md5");
+  const [apiKey, setApiKey] = useState("");
+
   let interval;
   // let rawLogs = {};
 
-  const handleFileLookup = (hashes) => {
+  const handleFileLookup = (hashes, apiKey) => {
     interval =
       !interval &&
       setInterval(() => {
         setHashCounter((prev) => prev + 1);
         axios
-          .get("https://www.virustotal.com/api/v3/files/" + hashes[hashCounter], { headers: VTHeader })
+          .get("https://www.virustotal.com/api/v3/files/" + hashes[hashCounter], { headers: { "x-apikey": apiKey } })
           .then((response) => {
             setRawLogs((rawLogs) => {
               rawLogs[hashes[hashCounter]] = response;
@@ -77,7 +77,7 @@ function VirusTotalFileCheck() {
   useEffect(() => {
     console.log({ hashes });
     if (hashes && hashes.length > 0) {
-      handleFileLookup(hashes);
+      handleFileLookup(hashes, apiKey);
     }
     return () => {
       clearInterval(interval);
@@ -88,6 +88,11 @@ function VirusTotalFileCheck() {
     e.preventDefault();
     setLogs("");
     setRawLogs({});
+    console.log({ apiKey });
+    if (!apiKey || (apiKey && apiKey.trim() === "")) {
+      setError("Enter valid API key");
+      return;
+    }
 
     if (hashText.trim() === "") {
       setError("Enter valid hash values");
@@ -101,12 +106,18 @@ function VirusTotalFileCheck() {
   const handleHashConversionChange = (e) => {
     setHashConversion(e);
   };
+  const handleSetApiKey = (e) => {
+    setApiKey(e.target.value);
+  };
   return (
     <div className="App">
       <div className="nav-bar"></div>
       <div className="container-main">
         <form className="hash-input-form">
           <div className="mb-3 w-100 d-flex flex-column align-items-start justify-content-start">
+            <Input.Group className="d-flex flex-row text-left mb-2">
+              <Input placeholder="Enter your Virus Total api key here" onChange={handleSetApiKey} />
+            </Input.Group>
             <div className="mb-2 w-100 d-flex flex-row align-items-center justify-content-start">
               <Select defaultValue="md5" style={{ width: 100 }} onChange={handleHashConversionChange}>
                 <Option value="md5">MD5</Option>
@@ -133,12 +144,11 @@ function VirusTotalFileCheck() {
             />
             {error ? <Alert showIcon message={error} type="error" className="w-100 mt-2 text-left" /> : null}
           </div>
-          <div className="mb-2 w-100 d-flex flex-row align-items-center justify-content-start">
+          <div className="mb-2 w-100 d-flex flex-row align-items-center justify-content-end">
+            <span className="mr-3">{`Progress : ${hashCounter} / ${hashes.length}`}</span>
             <Button onClick={handleOnSubmit} type="primary" loading={isLoading}>
               {isLoading ? "Processing..." : "Submit"}
             </Button>
-
-            <span className="ml-3">{`Progress : ${hashCounter} / ${hashes.length}`}</span>
           </div>
         </form>
         <div className="mb-3 w-100 mt-5 d-flex flex-column align-items-start justify-content-start">
